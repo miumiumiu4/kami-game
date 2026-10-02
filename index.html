@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>神をたたえよ！ハート高圧洗浄</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#7fd0ff,#fff3d8 60%,#ffd9ef);touch-action:none;user-select:none;-webkit-user-select:none;font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;color:#2a3a52}
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+  .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;box-sizing:border-box}
+  #title{background:rgba(255,255,255,.55);backdrop-filter:blur(3px);z-index:5}
+  #title h1{margin:0 0 6px;font-size:clamp(26px,7vw,46px);line-height:1.25;color:#e04a7a;text-shadow:0 3px 0 #fff,0 0 18px #ffe9a0}
+  #title h2{margin:0 0 18px;font-size:clamp(14px,3.8vw,20px);color:#4a5a78;font-weight:600}
+  #title p{margin:4px 0;font-size:clamp(13px,3.6vw,17px);line-height:1.6;max-width:460px}
+  .btn{margin-top:20px;padding:16px 34px;font-size:22px;font-weight:bold;border:none;border-radius:40px;background:linear-gradient(#ff8fb1,#ff4f7b);color:#fff;box-shadow:0 6px 0 #b8325a,0 10px 24px rgba(255,79,123,.4);font-family:inherit;cursor:pointer}
+  .btn:active{transform:translateY(3px);box-shadow:0 3px 0 #b8325a}
+  #hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:3}
+  .pill{background:rgba(255,255,255,.8);border-radius:20px;padding:8px 14px;font-weight:bold;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  #hint{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(255,255,255,.85);border-radius:20px;padding:10px 16px;font-size:14px;font-weight:bold;z-index:3;pointer-events:none;transition:opacity .8s;max-width:88vw;text-align:center}
+  #mute{pointer-events:auto;border:none;background:rgba(255,255,255,.8);border-radius:50%;width:40px;height:40px;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  #jump{background:rgba(255,245,225,.92);z-index:6;display:none}
+  #jump h3{margin:0;font-size:clamp(22px,6vw,34px);color:#d6396a}
+  #jump .sub{margin:10px 0;font-size:clamp(15px,4vw,19px);line-height:1.6}
+  #jump .num{font-size:64px;font-weight:bold;color:#ff8a00;margin:4px 0}
+  #jump a.btn{display:inline-block;text-decoration:none}
+  #jump .cancel{margin-top:16px;background:none;border:none;color:#667;font-size:15px;text-decoration:underline;font-family:inherit}
+  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;text-align:center;background:#fff;z-index:9;font-size:16px;line-height:1.7}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><div class="pill">❤ とどけたハート：<span id="cnt">0</span></div><button id="mute" title="おと">🔊</button></div>
+<div id="hint" style="opacity:0">ほこりに みずを かけてね！（おしっぱなしで ジェット）</div>
+<div class="ov" id="title">
+  <h1>神をたたえよ！<br>ハート高圧洗浄</h1>
+  <h2>第一回 パソコン教室で 神になった みなさんへ ❤</h2>
+  <p>高圧洗浄機で「ほこり」を洗うと ハートが出るよ。<br>そのハートが 神に とどくと…<b>神のページへ ジャンプ！</b></p>
+  <p style="font-size:13px;color:#667">画面を おしっぱなし／ドラッグで ねらう ・ パソコンは マウスを おす</p>
+  <button class="btn" id="start">はじめる</button>
+</div>
+<div class="ov" id="jump">
+  <h3 id="jt">神に ハートが とどいた！</h3>
+  <div class="sub" id="js"></div>
+  <div class="num" id="jn">3</div>
+  <a class="btn" id="jgo" href="#">いま とぶ！</a>
+  <button class="cancel" id="jc">やっぱり ここで あそぶ</button>
+</div>
+<div id="err">3Dが ひょうじできませんでした。<br>ブラウザを あたらしくして もういちど ひらいてね。</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+// ================= 神のリスト（名前はここで かんたんに かえられます） =================
+const GODS=[
+ {name:'クリーンモアの神',url:'https://cleanmore.github.io/cleanmore-booking/',col:0xffc933},
+ {name:'ジェントルマンの神',url:'https://ctwchikamoto-cmyk.github.io/gentleman-booking/',col:0x6aa8ff},
+ {name:'クチョーの神',url:'https://nobuhikoa.github.io/kucho-booking/',col:0xff6fa0},
+ {name:'連携の大神',url:'https://miumiumiu4.github.io/renkei-survey/',col:0xff9a2e},
+ {name:'ユネクトの神',url:'https://yunecto.github.io/booking/',col:0x58d68d},
+ {name:'エビスの神',url:'https://ebisucleansvc-spec.github.io/ebisu-booking/',col:0xb48cff},
+ {name:'ピュアナの神',url:'https://jk114514-crypto.github.io/pyuana-booking/',col:0x4fd8e0}
+];
+if(typeof THREE==='undefined'){document.getElementById('err').style.display='flex';return;}
+const $=id=>document.getElementById(id);
+const cv=$('c');let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});}catch(e){$('err').style.display='flex';return;}
+renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0xfff3e0,40,90);
+(()=>{const c=document.createElement('canvas');c.width=2;c.height=256;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,256);gr.addColorStop(0,'#6fc8ff');gr.addColorStop(.55,'#fff0d6');gr.addColorStop(1,'#ffd3ea');g.fillStyle=gr;g.fillRect(0,0,2,256);scene.background=new THREE.CanvasTexture(c);})();
+const camera=new THREE.PerspectiveCamera(50,1,.1,200);camera.position.set(0,4.2,2);scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xffffff,0xffd9b8,.95));
+const sun=new THREE.DirectionalLight(0xffffff,.85);sun.position.set(-6,12,8);scene.add(sun);
+
+// ---------- textures ----------
+function radTex(c0,c1){const s=64,c=document.createElement('canvas');c.width=c.height=s;const g=c.getContext('2d'),gr=g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);gr.addColorStop(0,c0);gr.addColorStop(1,c1);g.fillStyle=gr;g.fillRect(0,0,s,s);return new THREE.CanvasTexture(c);}
+const dotTex=radTex('rgba(255,255,255,1)','rgba(255,255,255,0)');
+function plateTex(text,col){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='rgba(255,255,255,.95)';g.strokeStyle='#'+col.toString(16).padStart(6,'0');g.lineWidth=10;
+  g.beginPath();g.roundRect(8,8,496,112,40);g.fill();g.stroke();
+  g.fillStyle='#d6396a';g.font='bold 54px "Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';g.textAlign='center';g.textBaseline='middle';
+  let fs=54;while(g.measureText(text).width>440&&fs>20){fs-=2;g.font=`bold ${fs}px "Hiragino Maru Gothic ProN","Yu Gothic",sans-serif`;}
+  g.fillText(text,256,68);const t=new THREE.CanvasTexture(c);return t;}
+
+// ---------- clouds & floor ----------
+const cloudMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:.95});
+function cloud(x,y,z,s){const g=new THREE.Group();[[0,0,0,1.6],[1.6,-.2,.2,1.2],[-1.6,-.2,0,1.3],[.6,.7,.3,1.2],[-.7,.6,0,1]].forEach(([a,b,c,r])=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),cloudMat);m.position.set(a,b,c);g.add(m);});g.position.set(x,y,z);g.scale.setScalar(s);scene.add(g);return g;}
+const clouds=[];for(let i=0;i<14;i++)clouds.push(cloud((Math.random()-.5)*70,-1+Math.random()*3+(i%3)*8,-26-Math.random()*26,1.4+Math.random()*1.8));
+clouds.forEach((c,i)=>c.userData.sp=.15+Math.random()*.25);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(60,40),new THREE.MeshStandardMaterial({color:0xfff7ec,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-2;scene.add(floor);
+
+// ---------- gods ----------
+const skin=0xffe3c8;
+function makeGod(def){
+  const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
+  const col=def.col;
+  const robeMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.55,emissive:col,emissiveIntensity:.18});
+  const robe=new THREE.Mesh(new THREE.ConeGeometry(1.15,2.5,28),robeMat);robe.position.y=1.25;inner.add(robe);
+  const sash=new THREE.Mesh(new THREE.TorusGeometry(.78,.1,10,32),new THREE.MeshStandardMaterial({color:col,roughness:.4,emissive:col,emissiveIntensity:.25}));sash.rotation.x=Math.PI/2;sash.position.y=1.7;inner.add(sash);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.62,28,22),new THREE.MeshStandardMaterial({color:skin,roughness:.5}));head.position.y=3.05;inner.add(head);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.66,28,18,0,Math.PI*2,0,Math.PI*.52),new THREE.MeshStandardMaterial({color:0xffd86b,roughness:.35,metalness:.3,emissive:0xaa7a10,emissiveIntensity:.25}));hair.position.y=3.12;hair.rotation.x=-.25;inner.add(hair);
+  for(const k of[-1,1]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),new THREE.MeshBasicMaterial({color:0x2b2230}));eye.position.set(k*.22,3.05,.57);inner.add(eye);
+    const bl=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),new THREE.MeshBasicMaterial({color:0xff9fb0,transparent:true,opacity:.7}));bl.scale.set(1.3,.7,.4);bl.position.set(k*.38,2.9,.5);inner.add(bl);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,1.5,14),robeMat);arm.position.set(k*1.0,2.1,.15);arm.rotation.z=k*-.9;arm.rotation.x=-.2;inner.add(arm);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.22,14,10),new THREE.MeshStandardMaterial({color:skin,roughness:.5}));hand.position.set(k*1.55,2.65,.3);inner.add(hand);}
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(.17,.03,8,16,Math.PI),new THREE.MeshBasicMaterial({color:0x8a3a3a}));mouth.rotation.z=Math.PI;mouth.position.set(0,2.85,.58);inner.add(mouth);
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(.78,.075,14,48),new THREE.MeshStandardMaterial({color:0xffe27a,emissive:0xffc933,emissiveIntensity:.9,roughness:.2,metalness:.5}));halo.rotation.x=Math.PI/2.2;halo.position.y=3.95;inner.add(halo);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:radTex('rgba(255,255,255,.95)','rgba(255,255,255,0)'),color:col,transparent:true,opacity:.65,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(8,8,1);glow.position.set(0,2.6,-.6);g.add(glow);
+  const pad=new THREE.Group();[[0,0,0,1.3],[1.2,-.1,.2,.9],[-1.2,-.1,0,.95]].forEach(([a,b,c,r])=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),cloudMat);m.position.set(a,b,c);m.scale.y=.55;pad.add(m);});g.add(pad);
+  const plate=new THREE.Sprite(new THREE.SpriteMaterial({map:plateTex(def.name,col),transparent:true,depthWrite:false}));plate.scale.set(4.6,1.15,1);plate.position.set(0,5.1,0);g.add(plate);
+  g.userData={def,inner,halo,glow,plate,pulse:0,phase:Math.random()*6};
+  scene.add(g);return g;}
+const gods=GODS.map(makeGod);
+
+// ---------- targets（ほこり） ----------
+const dirtGeo=(()=>{const g=new THREE.IcosahedronGeometry(1,2),p=g.attributes.position;for(let i=0;i<p.count;i++){const k=1+(Math.sin(i*12.9898)*43758.5453%1)*.18;p.setXYZ(i,p.getX(i)*k,p.getY(i)*k,p.getZ(i)*k);}g.computeVertexNormals();return g;})();
+function makeTarget(god){
+  const grp=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:0x6a4a2c,roughness:.95});
+  const body=new THREE.Mesh(dirtGeo,mat);grp.add(body);
+  for(const k of[-1,1]){const w=new THREE.Mesh(new THREE.SphereGeometry(.2,12,10),new THREE.MeshBasicMaterial({color:0xffffff}));w.position.set(k*.38,.2,.85);grp.add(w);
+    const p=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),new THREE.MeshBasicMaterial({color:0x222222}));p.position.set(k*.38,.2,1.0);grp.add(p);}
+  const br=new THREE.Mesh(new THREE.BoxGeometry(.6,.07,.05),new THREE.MeshBasicMaterial({color:0x2a1a10}));br.position.set(0,-.25,.95);grp.add(br);
+  const hit=new THREE.Mesh(new THREE.SphereGeometry(1.15,10,8),new THREE.MeshBasicMaterial({visible:false}));grp.add(hit);hit.userData.target=grp;
+  grp.userData={god,mat,body,hit,meter:0,alive:true,respawn:0,base:new THREE.Vector3(),ph:Math.random()*6};
+  scene.add(grp);return grp;}
+const targets=[];gods.forEach(g=>{targets.push(makeTarget(g),makeTarget(g));});
+
+// ---------- layout ----------
+const D=24;let gScale=1;
+function layout(){
+  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=w/h<.75?58:50;camera.updateProjectionMatrix();
+  const aspect=w/h,visH=2*D*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),visW=visH*aspect;
+  const cols=aspect<.75?3:aspect<1.25?4:7,rows=Math.ceil(7/cols);
+  const sx=Math.min(5.6,visW/cols);gScale=Math.min(1.15,sx/4.9,visH*.7/(rows*8.4));
+  const rowH=8.4*gScale,cy=3.4;
+  gods.forEach((g,i)=>{const r=Math.floor(i/cols),c=i%cols,n=Math.min(cols,7-r*cols);
+    const x=(c-(n-1)/2)*sx,y=cy+(rows-1)*rowH/2-r*rowH-1.2*gScale;
+    g.position.set(x,y,-D+Math.abs(x)*.05);g.scale.setScalar(gScale);g.userData.baseY=y;});
+  targets.forEach((t,i)=>{const g=t.userData.god,k=i%2?1:-1;t.userData.base.set(g.position.x+k*1.9*gScale,g.position.y+.4*gScale,g.position.z+4.2);t.scale.setScalar(.8*gScale);});
+}
+addEventListener('resize',layout);
+
+// ---------- FX particles ----------
+function makeFX(n,size){const geo=new THREE.BufferGeometry();const pos=new Float32Array(n*3),col=new Float32Array(n*3);geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size,map:dotTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,vertexColors:true,sizeAttenuation:true}));pts.frustumCulled=false;scene.add(pts);
+  return{n,pos,col,geo,vel:new Float32Array(n*3),life:new Float32Array(n),c0:new Float32Array(n*3),i:0,grav:0,
+    add(p,v,c,l){const i=this.i=(this.i+1)%this.n;this.pos.set([p.x,p.y,p.z],i*3);this.vel.set([v.x,v.y,v.z],i*3);this.c0.set([c.r,c.g,c.b],i*3);this.life[i]=l;},
+    update(dt){for(let i=0;i<this.n;i++){if(this.life[i]>0){this.life[i]-=dt;const k=i*3;this.vel[k+1]-=this.grav*dt;this.pos[k]+=this.vel[k]*dt;this.pos[k+1]+=this.vel[k+1]*dt;this.pos[k+2]+=this.vel[k+2]*dt;const f=Math.max(0,Math.min(1,this.life[i]*2));this.col[k]=this.c0[k]*f;this.col[k+1]=this.c0[k+1]*f;this.col[k+2]=this.c0[k+2]*f;}else{this.col[i*3]=this.col[i*3+1]=this.col[i*3+2]=0;}}
+      this.geo.attributes.position.needsUpdate=true;this.geo.attributes.color.needsUpdate=true;}};}
+const water=makeFX(600,.16);water.grav=6;
+const spark=makeFX(900,.5);spark.grav=3;
+const V=(x,y,z)=>new THREE.Vector3(x,y,z),C=hex=>new THREE.Color(hex);
+function burst(p,hex,n,sp,life=1){const c=C(hex);for(let i=0;i<n;i++){const a=Math.random()*6.28,b=Math.random()*3.14-1.57,s=sp*(.4+Math.random()*.8);spark.add(p,V(Math.cos(a)*Math.cos(b)*s,Math.sin(b)*s+1.5,Math.sin(a)*Math.cos(b)*s),c,life*(.6+Math.random()*.6));}}
+
+// ---------- 高圧洗浄機（ガン＋本体＋ホース） ----------
+const gun=new THREE.Group();gun.position.set(.5,-.72,-1.25);camera.add(gun);
+const mYel=new THREE.MeshStandardMaterial({color:0xffcf2e,roughness:.4,metalness:.1}),mRed=new THREE.MeshStandardMaterial({color:0xe03a3a,roughness:.4}),mGray=new THREE.MeshStandardMaterial({color:0x4a4f5a,roughness:.5,metalness:.3}),mSil=new THREE.MeshStandardMaterial({color:0xdfe6ee,roughness:.2,metalness:.85});
+const gBody=new THREE.Mesh(new THREE.CylinderGeometry(.11,.13,.62,18),mYel);gBody.rotation.x=Math.PI/2;gBody.position.z=.05;gun.add(gBody);
+const gHand=new THREE.Mesh(new THREE.BoxGeometry(.13,.42,.16),mGray);gHand.position.set(0,-.3,-.08);gHand.rotation.x=.25;gun.add(gHand);
+const gGrip=new THREE.Mesh(new THREE.BoxGeometry(.15,.2,.18),mRed);gGrip.position.set(0,-.5,-.12);gGrip.rotation.x=.25;gun.add(gGrip);
+const gTrig=new THREE.Mesh(new THREE.BoxGeometry(.05,.17,.05),mRed);gTrig.position.set(0,-.14,.03);gTrig.rotation.x=-.4;gun.add(gTrig);
+const lance=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,1.2,14),mSil);lance.rotation.x=Math.PI/2;lance.position.z=.9;gun.add(lance);
+const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.035,.16,14),mRed);nozzle.rotation.x=Math.PI/2;nozzle.position.z=1.55;gun.add(nozzle);
+const tip=new THREE.Object3D();tip.position.z=1.65;gun.add(tip);
+const port=new THREE.Mesh(new THREE.TorusGeometry(.07,.025,8,16),mGray);port.position.set(0,-.02,-.3);gun.add(port);
+// 本体
+const machine=new THREE.Group();machine.position.set(-.82,-1.38,-3.0);machine.rotation.y=.55;machine.scale.setScalar(.58);camera.add(machine);
+const mBody=new THREE.Mesh(new THREE.BoxGeometry(1.0,.8,.8),mRed);mBody.position.y=.55;machine.add(mBody);
+const mTop=new THREE.Mesh(new THREE.BoxGeometry(1.02,.14,.82),mYel);mTop.position.y=1.0;machine.add(mTop);
+const mTank=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.5,20),mGray);mTank.position.set(.18,1.15,-.05);machine.add(mTank);
+for(const k of[-1,1]){const wh=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.16,20),new THREE.MeshStandardMaterial({color:0x222,roughness:.8}));wh.rotation.z=Math.PI/2;wh.position.set(k*.55,.26,-.1);machine.add(wh);}
+const handle=new THREE.Mesh(new THREE.TorusGeometry(.4,.04,8,20,Math.PI),mSil);handle.position.set(-.1,1.15,-.45);handle.rotation.y=Math.PI;machine.add(handle);
+const logo=new THREE.Mesh(new THREE.PlaneGeometry(.8,.42),new THREE.MeshBasicMaterial({map:(()=>{const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');g.fillStyle='#fff';g.beginPath();g.roundRect(4,4,248,120,20);g.fill();g.fillStyle='#e04a7a';g.font='bold 36px "Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('ありがとう',128,46);g.font='bold 30px sans-serif';g.fillText('❤ 洗浄 ❤',128,92);return new THREE.CanvasTexture(c);})()}));logo.position.set(0,.55,.41);machine.add(logo);
+const hosePort=new THREE.Object3D();hosePort.position.set(.5,.75,.3);machine.add(hosePort);
+let hoseMesh=null;const hoseMat=new THREE.MeshStandardMaterial({color:0x2d4a8a,roughness:.5});
+function updateHose(){camera.updateMatrixWorld(true);const a=new THREE.Vector3();hosePort.getWorldPosition(a);camera.worldToLocal(a);
+  const b=gun.localToWorld(new THREE.Vector3(0,-.02,-.36));camera.worldToLocal(b);
+  const m1=a.clone().lerp(b,.35).add(V(0,-.45,.2)),m2=a.clone().lerp(b,.7).add(V(.05,-.35,.1));
+  const curve=new THREE.CatmullRomCurve3([a,m1,m2,b]);const geo=new THREE.TubeGeometry(curve,22,.035,6,false);
+  if(hoseMesh){camera.remove(hoseMesh);hoseMesh.geometry.dispose();}hoseMesh=new THREE.Mesh(geo,hoseMat);camera.add(hoseMesh);}
+// ビーム
+const beamMat=new THREE.MeshBasicMaterial({color:0x7fdcff,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending});
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8,1,true),beamMat);beam.visible=false;scene.add(beam);
+const beam2=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,8,1,true),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,depthWrite:false,blending:THREE.AdditiveBlending}));beam2.visible=false;scene.add(beam2);
+
+// ---------- hearts ----------
+const hShape=(()=>{const s=new THREE.Shape();s.moveTo(0,-1);s.bezierCurveTo(-1.2,-.1,-1.4,1.1,-.5,1.2);s.bezierCurveTo(-.2,1.25,0,1.0,0,.8);s.bezierCurveTo(0,1.0,.2,1.25,.5,1.2);s.bezierCurveTo(1.4,1.1,1.2,-.1,0,-1);return s;})();
+const heartGeo=new THREE.ExtrudeGeometry(hShape,{depth:.45,bevelEnabled:true,bevelThickness:.16,bevelSize:.14,bevelSegments:3,curveSegments:14});heartGeo.center();
+const heartMat=new THREE.MeshStandardMaterial({color:0xff3f78,emissive:0x8a1236,emissiveIntensity:.8,roughness:.2,metalness:.15});
+const hearts=[];
+function launchHeart(from,god){const m=new THREE.Mesh(heartGeo,heartMat);m.scale.setScalar(.01);scene.add(m);
+  const to=god.position.clone().add(V(0,2.8*gScale,.4));const mid=from.clone().lerp(to,.5).add(V((Math.random()-.5)*3,4+Math.random()*2,2));
+  hearts.push({m,from:from.clone(),mid,to,god,t:0,dur:1.7});}
+
+// ---------- audio（ごく小さな音） ----------
+let AC=null,muted=false,noiseSrc=null,noiseGain=null;
+function audioInit(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function tone(f,d,type='sine',v=.05,delay=0){if(!AC||muted)return;const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+delay;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d);}
+function sprayStart(){if(!AC||muted||noiseSrc)return;const b=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  noiseSrc=AC.createBufferSource();noiseSrc.buffer=b;noiseSrc.loop=true;const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=2200;noiseGain=AC.createGain();noiseGain.gain.value=.018;noiseSrc.connect(f);f.connect(noiseGain);noiseGain.connect(AC.destination);noiseSrc.start();}
+function sprayStop(){if(noiseSrc){try{noiseSrc.stop();}catch(e){}noiseSrc=null;}}
+$('mute').onclick=e=>{e.stopPropagation();muted=!muted;$('mute').textContent=muted?'🔇':'🔊';if(muted)sprayStop();};
+$('mute').addEventListener('pointerdown',e=>e.stopPropagation());
+const sPop=()=>{tone(784,.12,'sine',.05);tone(1175,.16,'sine',.05,.08);};
+const sFan=()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.25,'triangle',.06,i*.09));
+
+// ---------- input ----------
+let started=false,spraying=false,ptr={x:.5,y:.62},jumping=false,cooldown={},total=0;
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function setPtr(e){ptr.x=e.clientX/innerWidth;ptr.y=e.clientY/innerHeight;}
+addEventListener('pointerdown',e=>{if(!started||jumping)return;if(e.target.closest&&e.target.closest('#mute'))return;setPtr(e);spraying=true;audioInit();if(AC&&AC.state=='suspended')AC.resume();sprayStart();});
+addEventListener('pointermove',e=>{if(started)setPtr(e);});
+addEventListener('pointerup',()=>{spraying=false;sprayStop();});
+addEventListener('pointercancel',()=>{spraying=false;sprayStop();});
+addEventListener('keydown',e=>{if(e.code=='Space'&&started&&!jumping){spraying=true;audioInit();sprayStart();e.preventDefault();}});
+addEventListener('keyup',e=>{if(e.code=='Space'){spraying=false;sprayStop();}});
+document.addEventListener('visibilitychange',()=>{if(AC){if(document.hidden)AC.suspend();else AC.resume();}});
+
+$('start').onclick=()=>{started=true;$('title').style.display='none';audioInit();if(AC&&AC.state=='suspended')AC.resume();const h=$('hint');h.style.opacity=1;setTimeout(()=>h.style.opacity=0,7000);sPop();};
+
+// ---------- jump overlay ----------
+let jumpTimer=null;
+function showJump(god){jumping=true;spraying=false;sprayStop();const def=god.userData.def;
+  $('jt').textContent=`${def.name}に ハートが とどいた！`;$('js').innerHTML='神は よろこんでいる…！<br>もうすぐ 神の ページへ とびます';
+  $('jgo').href=def.url;$('jump').style.display='flex';let n=3;$('jn').textContent=n;
+  clearInterval(jumpTimer);jumpTimer=setInterval(()=>{n--;$('jn').textContent=Math.max(n,0);if(n<=0){clearInterval(jumpTimer);location.href=def.url;}},1000);
+  $('jc').onclick=()=>{clearInterval(jumpTimer);$('jump').style.display='none';jumping=false;cooldown[def.name]=performance.now()+6000;};}
+
+// ---------- main loop ----------
+const clock=new THREE.Clock();let gt=0,hintShown=false;
+const tmpA=new THREE.Vector3(),tmpB=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
+function frame(){
+  const dt=Math.min(.05,clock.getDelta());gt+=dt;
+  // gods
+  gods.forEach((g,i)=>{const u=g.userData;g.position.y=u.baseY+Math.sin(gt*1.2+u.phase)*.18*gScale;u.halo.rotation.z+=dt*1.5;u.pulse=Math.max(0,u.pulse-dt*1.2);
+    const p=1+u.pulse*.28*Math.sin(Math.min(1,(1-u.pulse))*Math.PI*3+1.5)*0+u.pulse*.18;u.inner.scale.setScalar(p);u.inner.rotation.y=Math.sin(gt*.8+u.phase)*.12+u.pulse*Math.sin(gt*30)*.2;u.glow.material.opacity=.55+u.pulse*.45+Math.sin(gt*2+u.phase)*.08;});
+  clouds.forEach(c=>{c.position.x+=c.userData.sp*dt;if(c.position.x>40)c.position.x=-40;});
+  // aim
+  ndc.set(ptr.x*2-1,-(ptr.y*2-1));ray.setFromCamera(ndc,camera);
+  const hitMeshes=targets.filter(t=>t.userData.alive).map(t=>t.userData.hit);
+  const hits=ray.intersectObjects(hitMeshes,false);
+  let aimPoint=ray.ray.at(D+2,new THREE.Vector3()),hitT=null;
+  if(hits.length){aimPoint=hits[0].point.clone();hitT=hits[0].object.userData.target;}
+  // gun orientation
+  camera.updateMatrixWorld(true);gun.lookAt(aimPoint);gun.rotation.z+=0;
+  tip.getWorldPosition(tmpA);
+  // beam
+  if(spraying&&!jumping){
+    const dir=tmpB.copy(aimPoint).sub(tmpA),len=dir.length();dir.normalize();
+    for(const [b,r] of [[beam,.11+Math.sin(gt*40)*.015],[beam2,.025]]){b.visible=true;b.position.copy(tmpA).addScaledVector(dir,len/2);b.scale.set(r,len,r);b.quaternion.setFromUnitVectors(UP,dir);}
+    for(let i=0;i<7;i++){const k=Math.random();const p=tmpA.clone().addScaledVector(dir,len*k).add(V((Math.random()-.5)*.12,(Math.random()-.5)*.12,(Math.random()-.5)*.12));water.add(p,dir.clone().multiplyScalar(2+Math.random()*3).add(V((Math.random()-.5)*1.4,(Math.random()-.5)*1.4,(Math.random()-.5)*1.4)),C(0xbfeeff),.5+Math.random()*.4);}
+    // splash at hit
+    for(let i=0;i<4;i++)water.add(aimPoint,V((Math.random()-.5)*4,Math.random()*3+1,(Math.random()-.5)*4),C(0xffffff),.5);
+    if(hitT){const u=hitT.userData;u.meter+=dt/.75;u.mat.color.lerpColors(C(0x6a4a2c),C(0xfff0f5),Math.min(1,u.meter));hitT.scale.setScalar(.8*gScale*(1-u.meter*.35));
+      if(u.meter>=1){u.alive=false;u.respawn=3;hitT.visible=false;burst(hitT.position,0xff7aa8,40,6,1.1);burst(hitT.position,0xffffff,24,4,1);sPop();launchHeart(hitT.position,u.god);}}
+  }else{beam.visible=false;beam2.visible=false;}
+  // targets
+  targets.forEach(t=>{const u=t.userData;if(u.alive){t.position.set(u.base.x+Math.sin(gt*.9+u.ph)*.5*gScale,u.base.y+Math.sin(gt*1.4+u.ph*2)*.4*gScale,u.base.z);t.rotation.y=Math.sin(gt*.6+u.ph)*.4;
+      if(hitT!==t&&u.meter>0){u.meter=Math.max(0,u.meter-dt*.4);u.mat.color.lerpColors(C(0x6a4a2c),C(0xfff0f5),Math.min(1,u.meter));}}
+    else{u.respawn-=dt;if(u.respawn<=0){u.alive=true;u.meter=0;u.mat.color.setHex(0x6a4a2c);t.visible=true;t.scale.setScalar(.8*gScale);burst(u.base,0xffe9a0,10,3,.8);}}});
+  // hearts
+  for(let i=hearts.length-1;i>=0;i--){const h=hearts[i];h.t+=dt/h.dur;const t=Math.min(1,h.t),e=t*t*(3-2*t),q=1-e;
+    h.m.position.set(q*q*h.from.x+2*q*e*h.mid.x+e*e*h.to.x,q*q*h.from.y+2*q*e*h.mid.y+e*e*h.to.y,q*q*h.from.z+2*q*e*h.mid.z+e*e*h.to.z);
+    h.m.rotation.y+=dt*6;h.m.scale.setScalar(Math.min(1,t*5)*.55*(1+.15*Math.sin(gt*14)));
+    if(Math.random()<.8)spark.add(h.m.position,V((Math.random()-.5)*1.4,(Math.random()-.5)*1.4,(Math.random()-.5)*1.4),C(0xff7aa8),.7);
+    if(t>=1){scene.remove(h.m);hearts.splice(i,1);const g=h.god,def=g.userData.def;
+      burst(h.to,0xffd23f,70,9,1.6);burst(h.to,0xff7aa8,50,7,1.4);burst(h.to,def.col,50,8,1.5);g.userData.pulse=1;total++;$('cnt').textContent=total;sFan();
+      if(!jumping&&!(cooldown[def.name]>performance.now()))setTimeout(()=>{if(!jumping)showJump(g);},500);}}
+  water.update(dt);spark.update(dt);
+  updateHose();
+  renderer.render(scene,camera);requestAnimationFrame(frame);
+}
+layout();requestAnimationFrame(frame);
+window.__k={gods,targets,hearts,get jumping(){return jumping},get started(){return started},launchHeart,showJump,ptr,set spray(v){spraying=v},camera,renderer};
+})();
+</script>
+</body>
+</html>
